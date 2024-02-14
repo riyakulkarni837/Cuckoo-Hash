@@ -53,15 +53,16 @@ class CuckooHash24:
                 bucket.append(key)
                 return True
             else:
-                if len(self.tables[table_id][self.hash_func(key, 0)]) < self.bucket_size or len(self.tables[table_id][self.hash_func(key, 1)]) < self.bucket_size:
-                    bucket_idx = self.hash_func(key, 0)
+                if (self.tables[table_id][self.hash_func(key, 0)] is None or len(self.tables[table_id][self.hash_func(key, 0)]) < self.bucket_size) \
+                    or (self.tables[table_id][self.hash_func(key, 1)] is None or len(self.tables[table_id][self.hash_func(key, 1)]) < self.bucket_size):
+                        bucket_idx = self.hash_func(key, 0)
                 else:
                     bucket_idx = self.hash_func(key, 0)
-                    displaced_idx = random.randrange(self.bucket_size)
+                    displaced_idx = self.get_rand_idx_from_bucket(bucket_idx, table_id)
                     key_to_displace = self.tables[table_id][bucket_idx][displaced_idx]
                     self.tables[table_id][bucket_idx][displaced_idx] = key
                     key = key_to_displace
-            table_id = 1 - table_id
+                table_id = 1 - table_id
         return False
 
 
