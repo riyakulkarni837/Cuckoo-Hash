@@ -38,62 +38,54 @@ class CuckooHash24:
 	# you may however define additional instance variables inside the __init__ method.
 
 	def insert(self, key: int) -> bool:
+		# Insert a key into the hash table using cuckoo hashing
 		cycles = 0
 		function_id = 0
 
-		while True:
-			if cycles > self.CYCLE_THRESHOLD:
-				return False
+		while cycles <= self.CYCLE_THRESHOLD:
 			hash0 = self.hash_func(key, function_id)
-			hash1 = self.hash_func(key, 1-function_id)
-			if self.table[hash0] is None:
-				self.table[hash0] = [key]
-				return True
-			elif len(self.table[hash0]) < self.bucket_size:
-				self.table[hash0].append(key)
-				return True
-			elif self.table[hash1] is None:
-				self.table[hash1] = [key]
-				return True
-			elif len(self.table[hash1]) < self.bucket_size:
-				self.table[hash1].append(key)
-				return True
-			else:
-				idx = self.get_rand_bucket_index(hash0)
-				key, self.table[hash0][idx] = self.table[hash0][idx], key
-				cycles += 1
+			hash1 = self.hash_func(key, 1 - function_id)
 
+			for h in [hash0, hash1]:
+				# If the bucket is empty, insert the key
+				if self.table[h] is None:
+					self.table[h] = [key]
+					return True
+				# If there is space in the bucket, append the key
+				elif len(self.table[h]) < self.bucket_size:
+					self.table[h].append(key)
+					return True
+
+			# Both buckets are full, displace a random key from hash0 bucket
+			idx = self.get_rand_bucket_index(hash0)
+			key, self.table[hash0][idx] = self.table[hash0][idx], key
+			cycles += 1
+
+		# Exceeded cycle threshold, unable to insert
+		return False
 
 	def lookup(self, key: int) -> bool:
-		hash0 = self.hash_func(key, 0)
-		hash1 = self.hash_func(key, 1)
-		if self.table[hash0] is not None and key in self.table[hash0]:
-			return True
-		if self.table[hash1] is not None and key in self.table[hash1]:
-			return True
-		return False
-		
+		# Check if the key is present in either of the hash buckets
+		hash0, hash1 = self.hash_func(key, 0), self.hash_func(key, 1)
+		return any(key in (self.table[h] if self.table[h] else []) for h in [hash0, hash1])
 
 	def delete(self, key: int) -> None:
-		hash0 = self.hash_func(key, 0)
-		hash1 = self.hash_func(key, 1)
-		if self.table[hash0] is not None and key in self.table[hash0]:
-			self.table[hash0].remove(key)
-			if(len(self.table[hash0]) == 0):
-				self.table[hash0] = None
-		if self.table[hash1] is not None and key in self.table[hash1]:
-			self.table[hash1].remove(key)
-			if(len(self.table[hash1]) == 0):
-				self.table[hash1] = None
+		# Delete the key from the hash table if it exists
+		for h in [self.hash_func(key, 0), self.hash_func(key, 1)]:
+			if self.table[h] and key in self.table[h]:
+				self.table[h].remove(key)
+				if not self.table[h]:
+					self.table[h] = None
 
 	def rehash(self, new_table_size: int) -> None:
+		# Rehash the existing keys into a new table with the specified size
 		self.__num_rehashes += 1
-		self.table_size = new_table_size # do not modify this line
-		old_table = self.table
-		self.table = [None]*self.table_size
-		for key in old_table:
-			if key is not None:
-				for k in key:
+		self.table_size = new_table_size
+		old_table, self.table = self.table, [None] * self.table_size
+
+		for key_bucket in old_table:
+			if key_bucket:
+				for k in key_bucket:
 					self.insert(k)
 
 	# feel free to define new methods in addition to the above
