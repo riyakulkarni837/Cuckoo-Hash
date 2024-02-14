@@ -36,34 +36,31 @@ class CuckooHash24:
     # you may however define additional instance variables inside the __init__ method.
 
     def insert(self, key: int) -> bool:
-        # TODO
-        table_id = 0
-        for _ in range(self.CYCLE_THRESHOLD + 1):
-            # Calculating the bucket index using hash_func  
-            bucket_idx = self.hash_func(key, table_id)
-            # Retrieving the bucket at the calculated index
-            bucket = self.tables[table_id][bucket_idx]
+		cycles = 0
+		function_id = 0
 
-            # If the bucket is None, creating a new bucket with the key
-            if bucket is None:
-                self.tables[table_id][bucket_idx] = [key]
-                return True
-            # If the bucket has space, appending the key to it
-            elif len(bucket) < self.bucket_size:
-                bucket.append(key)
-                return True
-            else:
-                if (self.tables[table_id][self.hash_func(key, 0)] is None or len(self.tables[table_id][self.hash_func(key, 0)]) < self.bucket_size) \
-                    or (self.tables[table_id][self.hash_func(key, 1)] is None or len(self.tables[table_id][self.hash_func(key, 1)]) < self.bucket_size):
-                        bucket_idx = self.hash_func(key, 0)
-                else:
-                    bucket_idx = self.hash_func(key, 0)
-                    displaced_idx = self.get_rand_idx_from_bucket(bucket_idx, table_id)
-                    key_to_displace = self.tables[table_id][bucket_idx][displaced_idx]
-                    self.tables[table_id][bucket_idx][displaced_idx] = key
-                    key = key_to_displace
-                table_id = 1 - table_id
-        return False
+		while True:
+			if cycles > self.CYCLE_THRESHOLD:
+				return False
+			hash0 = self.hash_func(key, function_id)
+			hash1 = self.hash_func(key, 1-function_id)
+			if self.table[hash0] is None:
+				self.table[hash0] = [key]
+				return True
+			elif len(self.table[hash0]) < self.bucket_size:
+				self.table[hash0].append(key)
+				return True
+			elif self.table[hash1] is None:
+				self.table[hash1] = [key]
+				return True
+			elif len(self.table[hash1]) < self.bucket_size:
+				self.table[hash1].append(key)
+				return True
+			else:
+				idx = self.get_rand_bucket_index(hash0)
+				key, self.table[hash0][idx] = self.table[hash0][idx], key
+				cycles += 1
+
 
 
 
